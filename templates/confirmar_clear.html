@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Limpiar Base de Datos{% endblock %}
+
+{% block header %}⚠️ ¡Advertencia!{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Limpiar toda la base de datos</h5>
+            </div>
+            <div class="card-body">
+                <p>Esta acción <strong>eliminará permanentemente</strong> todos los datos:</p>
+                <ul>
+                    <li>Usuarios (listeros)</li>
+                    <li>Listas y jugadas</li>
+                    <li>Límites por número</li>
+                    <li>Historial de recaudación y resultados</li>
+                </ul>
+                <p>Se conservará únicamente el usuario administrador y los listeros de prueba.</p>
+                <p class="text-danger fw-bold">¿Estás seguro de que deseas continuar?</p>
+                <form method="POST">
+                    <button type="submit" class="btn btn-danger">Sí, limpiar todo</button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

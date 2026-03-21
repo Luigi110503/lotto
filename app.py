@@ -6,7 +6,7 @@ from models import db, User, Lista, Jugada, LimiteNumero, ResultadoSorteo, Histo
 from auth import auth_bp, admin_required, listero_required, listero_autorizado_required
 from utils import ApuestaCalculator
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -16,7 +16,6 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave-muy-segura-cambia
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-    # Ajusta el esquema de la URL para SQLAlchemy si viene de Neon
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -270,6 +269,20 @@ def cerrar_vencidas():
     cantidad = cerrar_listas_vencidas()
     flash(f'Se cerraron {cantidad} listas vencidas.', 'success')
     return redirect(url_for('admin_dashboard'))
+
+# ========== VACIAR BASE DE DATOS ==========
+@app.route('/admin/clear_database', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def clear_database():
+    if request.method == 'POST':
+        with app.app_context():
+            db.drop_all()
+            db.create_all()
+            crear_usuarios_iniciales()
+        flash('✅ Base de datos limpiada y reiniciada correctamente.', 'success')
+        return redirect(url_for('admin_dashboard'))
+    return render_template('confirmar_clear.html')
 
 # ========== CONFIGURACIÓN DE PREMIOS ==========
 @app.route('/admin/premios', methods=['GET', 'POST'])
@@ -534,31 +547,34 @@ def sincronizar():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# ========== INICIALIZACIÓN ==========
+# ========== INICIALIZACIÓN DE LA BASE DE DATOS ==========
 def crear_usuarios_iniciales():
-    with app.app_context():
-        db.create_all()
-        admin = User.query.filter_by(username='admin').first()
-        if not admin:
-            admin = User(username='admin', nombre_completo='Administrador', role='admin', activo=True, autorizado=True)
-            admin.set_password('admin123')
-            db.session.add(admin)
-        for u in [('listero1', 'Juan Pérez', True), ('listero2', 'María García', True), ('listero3', 'Carlos López', False)]:
-            if not User.query.filter_by(username=u[0]).first():
-                nuevo = User(username=u[0], nombre_completo=u[1], role='listero', activo=True, autorizado=u[2])
-                if u[2]:
-                    nuevo.fecha_autorizacion = datetime.now(timezone.utc)
-                nuevo.set_password('listero123')
-                db.session.add(nuevo)
-        db.session.commit()
+    """Crea usuario administrador y listeros de prueba si no existen."""
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(username='admin', nombre_completo='Administrador', role='admin', activo=True, autorizado=True)
+        admin.set_password('admin123')
+        db.session.add(admin)
+    for u in [('listero1', 'Juan Pérez', True), ('listero2', 'María García', True), ('listero3', 'Carlos López', False)]:
+        if not User.query.filter_by(username=u[0]).first():
+            nuevo = User(username=u[0], nombre_completo=u[1], role='listero', activo=True, autorizado=u[2])
+            if u[2]:
+                nuevo.fecha_autorizacion = datetime.now(timezone.utc)
+            nuevo.set_password('listero123')
+            db.session.add(nuevo)
+    db.session.commit()
 
-        defaults = {'fijo': 70, 'corrido': 70, 'centena': 300, 'parlet': 700}
-        for tipo, mult in defaults.items():
-            if not PremioConfig.query.filter_by(tipo=tipo).first():
-                config = PremioConfig(tipo=tipo, multiplicador=mult, actualizado_por=1 if admin else None)
-                db.session.add(config)
-        db.session.commit()
+    defaults = {'fijo': 70, 'corrido': 70, 'centena': 300, 'parlet': 700}
+    for tipo, mult in defaults.items():
+        if not PremioConfig.query.filter_by(tipo=tipo).first():
+            config = PremioConfig(tipo=tipo, multiplicador=mult, actualizado_por=1 if admin else None)
+            db.session.add(config)
+    db.session.commit()
+
+# Esta parte se ejecuta siempre que la aplicación se inicia (gunicorn o flask run)
+with app.app_context():
+    db.create_all()
+    crear_usuarios_iniciales()
 
 if __name__ == '__main__':
-    # Para desarrollo local (no usado en producción con gunicorn)
     app.run(debug=False)
