@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}Resultado Premios - {{ lista.nombre }}{% endblock %}
+
+{% block header %}Resultados - {{ lista.nombre }}{% endblock %}
+
+{% block content %}
+<!-- Números Ganadores -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-dark text-white">
+            <div class="card-body text-center">
+                <h3>🎰 Números Ganadores</h3>
+                <h1 class="display-4">
+                    <span class="badge bg-warning text-dark">{{ numeros_ganadores.centena }}</span>
+                    <span class="badge bg-warning text-dark">{{ numeros_ganadores.fijo }}</span>
+                    <span class="badge bg-warning text-dark">{{ numeros_ganadores.corridos[0] }}</span>
+                    <span class="badge bg-warning text-dark">{{ numeros_ganadores.corridos[1] }}</span>
+                </h1>
+                <p>Resultado: {{ resultado }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Total Premios Lista -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h3>Premios en {{ lista.nombre }}</h3>
+                <h1 class="display-4">${{ "%.2f"|format(calculo.total_premios) }}</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detalle de Premios -->
+<div class="row">
+    {% if calculo.detalle.centena %}
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5>Centena (x300) - Número {{ numeros_ganadores.centena }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Jugador</th><th>Número</th><th>Monto</th><th>Premio</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for p in calculo.detalle.centena %}
+                            <tr>
+                                <td>{{ p.nombre_jugador }}</td>
+                                <td>{{ p.numeros }}</td>
+                                <td>${{ "%.2f"|format(p.monto) }}</td>
+                                <td class="fw-bold text-success">${{ "%.2f"|format(p.premio) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if calculo.detalle.fijo %}
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5>Fijo (x70) - Número {{ numeros_ganadores.fijo }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Jugador</th><th>Número</th><th>Monto</th><th>Premio</th></tr></thead>
+                        <tbody>
+                            {% for p in calculo.detalle.fijo %}
+                            <tr>
+                                <td>{{ p.nombre_jugador }}</td>
+                                <td>{{ p.numeros }}</td>
+                                <td>${{ "%.2f"|format(p.monto) }}</td>
+                                <td class="fw-bold text-success">${{ "%.2f"|format(p.premio) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if calculo.detalle.corrido %}
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5>Corrido (x70) - Números {{ numeros_ganadores.corridos|join(', ') }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Jugador</th><th>Número</th><th>Monto</th><th>Premio</th></tr></thead>
+                        <tbody>
+                            {% for p in calculo.detalle.corrido %}
+                            <tr>
+                                <td>{{ p.nombre_jugador }}</td>
+                                <td>{{ p.numeros }}</td>
+                                <td>${{ "%.2f"|format(p.monto) }}</td>
+                                <td class="fw-bold text-success">${{ "%.2f"|format(p.premio) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if calculo.detalle.parlet %}
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5>Parlet (x700) - Combinaciones</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>Jugador</th><th>Números</th><th>Monto</th><th>Premio</th></tr></thead>
+                        <tbody>
+                            {% for p in calculo.detalle.parlet %}
+                            <tr>
+                                <td>{{ p.nombre_jugador }}</td>
+                                <td>{{ p.numeros }}</td>
+                                <td>${{ "%.2f"|format(p.monto) }}</td>
+                                <td class="fw-bold text-success">${{ "%.2f"|format(p.premio) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Volver</a>
+</div>
+{% endblock %}

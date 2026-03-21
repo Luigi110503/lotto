@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Mis Jugadas{% endblock %}
+{% block header %}Jugadas - {{ lista.nombre }}{% endblock %}
+{% block content %}
+<div class="row mb-3"><div class="col-md-6"><div class="card bg-info text-white"><div class="card-body"><h5>💰 Total Apostado</h5><h3>${{ "%.2f"|format(total_apostado) }}</h3></div></div></div>
+<div class="col-md-6"><div class="card bg-secondary text-white"><div class="card-body"><h5>🎲 Total de Jugadas</h5><h3>{{ jugadas|length }}</h3></div></div></div></div>
+<div class="alert alert-info">Los premios se calcularán después del sorteo.</div>
+<div class="card"><div class="card-body"><div class="table-responsive"><table class="table table-striped"><thead><tr><th>Jugador</th><th>Tipo</th><th>Números</th><th>Monto</th><th>Fecha</th></tr></thead>
+<tbody>{% for jugada in jugadas %}<tr><td><strong>{{ jugada.nombre_jugador }}</strong></td><td>{% if jugada.tipo_apuesta == 'fijo' %}<span class="badge bg-primary">Fijo</span>{% elif jugada.tipo_apuesta == 'corrido' %}<span class="badge bg-warning">Corrido</span>{% elif jugada.tipo_apuesta == 'parlet' %}<span class="badge bg-danger">Parlet</span>{% elif jugada.tipo_apuesta == 'centena' %}<span class="badge bg-info">Centena</span>{% endif %}</td><td>{{ jugada.numeros }}</td><td>${{ "%.2f"|format(jugada.monto_apostado) }}</td><td>{{ jugada.fecha_apuesta.strftime('%d/%m/%Y %H:%M') }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+<div class="mt-3"><a href="{{ url_for('listero_dashboard') }}" class="btn btn-secondary">Volver</a></div>
+{% endblock %}

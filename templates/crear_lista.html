@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Crear Lista{% endblock %}
+
+{% block header %}Crear Nueva Lista{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Datos de la Lista</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre de la Lista</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        <small class="text-muted">Ej: Lista Principal, Lista Sucursal A, etc.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="turno" class="form-label">Turno</label>
+                        <select class="form-control" id="turno" name="turno" required>
+                            <option value="mediodia">🌞 Mediodía (Cierre 12:00)</option>
+                            <option value="noche">🌙 Noche (Cierre 20:00)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="limite_total" class="form-label">Límite Total de Recogida</label>
+                        <input type="number" class="form-control" id="limite_total" name="limite_total" step="0.01" value="0">
+                        <small class="text-muted">0 = sin límite</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="limite_por_numero" class="form-label">Límite por Número</label>
+                        <input type="number" class="form-control" id="limite_por_numero" name="limite_por_numero" step="0.01" value="0">
+                        <small class="text-muted">0 = sin límite</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Crear Lista</button>
+                    <a href="{{ url_for('listero_dashboard') }}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

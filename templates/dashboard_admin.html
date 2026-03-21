@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Admin{% endblock %}
+
+{% block header %}Dashboard Administrador{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3>💰 Total Apostado en Listas Activas</h3>
+                <h1 class="display-4">${{ "%.2f"|format(total_apostado) }}</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="fas fa-users"></i> Listeros Registrados</h4>
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#crearListeroModal">
+                    <i class="fas fa-plus"></i> Agregar Listero
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Usuario</th>
+                                <th>Estado</th>
+                                <th>Listas Activas</th>
+                                <th>Total Recaudado</th>
+                                <th>Acciones</th>
+                            </thead>
+                        <tbody>
+                            {% for item in listeros_data %}
+                            <tr>
+                                <td>{{ item.listero.nombre_completo }}</td>
+                                <td>{{ item.listero.username }}</td>
+                                <td>
+                                    {% if item.listero.autorizado %}
+                                    <span class="badge bg-success">✓ Autorizado</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">✗ No Autorizado</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.listas_activas }}</td>
+                                <td>${{ "%.2f"|format(item.total_recaudado) }}</td>
+                                <td>
+                                    <a href="{{ url_for('autorizar_listeros') }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-edit"></i> Gestionar
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-info text-white">
+        <h4 class="mb-0"><i class="fas fa-list"></i> Listas Activas por Turno</h4>
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs" id="turnoTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="mediodia-tab" data-bs-toggle="tab" data-bs-target="#mediodia" type="button" role="tab">🌞 Mediodía</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="noche-tab" data-bs-toggle="tab" data-bs-target="#noche" type="button" role="tab">🌙 Noche</button>
+            </li>
+        </ul>
+        <div class="tab-content mt-3">
+            <div class="tab-pane fade show active" id="mediodia" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Listero</th>
+                                <th>Hora Cierre</th>
+                                <th>Total Apostado</th>
+                                <th>Acciones</th>
+                            </thead>
+                        <tbody>
+                            {% for lista in listas if lista.turno == 'mediodia' %}
+                            <tr>
+                                <td>{{ lista.nombre }}</td>
+                                <td>{{ lista.listero.nombre_completo }}</td>
+                                <td>{{ lista.hora_cierre if lista.hora_cierre else 'No configurado' }}</td>
+                                <td>${{ "%.2f"|format(lista.jugadas|sum(attribute='monto_apostado')) }}</td>
+                                <td>
+                                    <a href="{{ url_for('ver_jugadas', lista_id=lista.id) }}" class="btn btn-sm btn-info">Ver Jugadas</a>
+                                    <a href="{{ url_for('configurar_limites', lista_id=lista.id) }}" class="btn btn-sm btn-warning">Límites</a>
+                                    <a href="{{ url_for('configurar_horario', lista_id=lista.id) }}" class="btn btn-sm btn-secondary">Horario</a>
+                                    <a href="{{ url_for('editar_limite_total', lista_id=lista.id) }}" class="btn btn-sm btn-primary">Límite Total</a>
+                                    {% if lista.activa %}
+                                    <a href="{{ url_for('cerrar_lista', lista_id=lista.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Cerrar esta lista?')">Cerrar</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="noche" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Listero</th>
+                                <th>Hora Cierre</th>
+                                <th>Total Apostado</th>
+                                <th>Acciones</th>
+                            </thead>
+                        <tbody>
+                            {% for lista in listas if lista.turno == 'noche' %}
+                            <tr>
+                                <td>{{ lista.nombre }}</td>
+                                <td>{{ lista.listero.nombre_completo }}</td>
+                                <td>{{ lista.hora_cierre if lista.hora_cierre else 'No configurado' }}</td>
+                                <td>${{ "%.2f"|format(lista.jugadas|sum(attribute='monto_apostado')) }}</td>
+                                <td>
+                                    <a href="{{ url_for('ver_jugadas', lista_id=lista.id) }}" class="btn btn-sm btn-info">Ver Jugadas</a>
+                                    <a href="{{ url_for('configurar_limites', lista_id=lista.id) }}" class="btn btn-sm btn-warning">Límites</a>
+                                    <a href="{{ url_for('configurar_horario', lista_id=lista.id) }}" class="btn btn-sm btn-secondary">Horario</a>
+                                    <a href="{{ url_for('editar_limite_total', lista_id=lista.id) }}" class="btn btn-sm btn-primary">Límite Total</a>
+                                    {% if lista.activa %}
+                                    <a href="{{ url_for('cerrar_lista', lista_id=lista.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('¿Cerrar esta lista?')">Cerrar</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear listero -->
+<div class="modal fade" id="crearListeroModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Agregar Nuevo Listero</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('crear_listero') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nombre_completo" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nombre de Usuario</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                        <small class="text-muted">Ej: juan_perez, maria_garcia</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <small class="text-muted">Mínimo 6 caracteres</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Listero</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

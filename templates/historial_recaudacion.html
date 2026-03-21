@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Recaudación{% endblock %}
+
+{% block header %}Historial de Recaudación (Acumulado){% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5>💰 Total Apostado Acumulado</h5>
+                <h3>${{ "%.2f"|format(total_apostado_acum) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <h5>🏆 Total Premios Pagados</h5>
+                <h3>${{ "%.2f"|format(total_premios_acum) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5>📊 Ganancia Neta Acumulada</h5>
+                <h3>${{ "%.2f"|format(ganancia_neta_acum) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Cierres de Listas</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Lista</th>
+                        <th>Turno</th>
+                        <th>Fecha Cierre</th>
+                        <th>Total Apostado</th>
+                        <th>Premios Pagados</th>
+                        <th>Ganancia Neta</th>
+                    </thead>
+                <tbody>
+                    {% for h in historial %}
+                    <tr>
+                        <td>{{ h.lista.nombre }}</td>
+                        <td>{% if h.turno == 'mediodia' %}🌞 Mediodía{% else %}🌙 Noche{% endif %}</td>
+                        <td>{{ h.fecha_cierre|cuba_time }}</td>
+                        <td>${{ "%.2f"|format(h.total_apostado) }}</td>
+                        <td>${{ "%.2f"|format(h.total_premios_pagados) }}</td>
+                        <td class="{% if h.ganancia_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(h.ganancia_neta) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">No hay registros de cierre aún.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">← Volver</a>
+</div>
+{% endblock %}

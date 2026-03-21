@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes{% endblock %}
+
+{% block header %}Reportes de Ganancia{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <ul class="nav nav-tabs card-header-tabs">
+            <li class="nav-item">
+                <a class="nav-link {% if tipo == 'semana' %}active{% endif %}" href="{{ url_for('reportes', tipo='semana') }}">Por Semana</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tipo == 'mes' %}active{% endif %}" href="{{ url_for('reportes', tipo='mes') }}">Por Mes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if tipo == 'año' %}active{% endif %}" href="{{ url_for('reportes', tipo='año') }}">Por Año</a>
+            </li>
+        </ul>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Periodo</th>
+                        <th>Total Apostado</th>
+                        <th>Total Premios</th>
+                        <th>Ganancia Neta</th>
+                    </thead>
+                <tbody>
+                    {% for r in reportes %}
+                    <tr>
+                        <td>{{ r.periodo }}</td>
+                        <td>${{ "%.2f"|format(r.total_apostado) }}</td>
+                        <td>${{ "%.2f"|format(r.total_premios) }}</td>
+                        <td class="{% if r.ganancia_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            ${{ "%.2f"|format(r.ganancia_neta) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No hay datos aún.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

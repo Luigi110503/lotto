@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}Resultados Lotería{% endblock %}
+
+{% block header %}Registrar Resultados - Pick 3 Florida{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Ingresar Resultados del Sorteo</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Formato:</strong> Ingrese los números como aparecen en la lotería<br>
+                    <strong>Ejemplo 1:</strong> <code>234 45 56</code><br>
+                    <strong>Ejemplo 2:</strong> <code>2 34 45 56</code>
+                </div>
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="turno" class="form-label">Turno</label>
+                        <select class="form-control" id="turno" name="turno" required>
+                            <option value="mediodia">🌞 Mediodía (12:00 PM)</option>
+                            <option value="noche">🌙 Noche (8:00 PM)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="resultado" class="form-label">Resultado del Sorteo</label>
+                        <input type="text" class="form-control" id="resultado" name="resultado" placeholder="Ej: 234 45 56" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fecha_sorteo" class="form-label">Fecha del Sorteo</label>
+                        <input type="date" class="form-control" id="fecha_sorteo" name="fecha_sorteo" value="{{ now.strftime('%Y-%m-%d') }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-calculator"></i> Calcular Premios
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">📅 Horarios de Juego</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <strong>⏰ Turno Mediodía:</strong> Cierre de listas a las 12:00 PM<br>
+                    <strong>⏰ Turno Noche:</strong> Cierre de listas a las 8:00 PM
+                </div>
+                <hr>
+                <div class="alert alert-info">
+                    <strong>🎯 Cálculo de Premios:</strong>
+                    <ul class="mt-2">
+                        <li><strong>Centena:</strong> Número de 0-9 → x300</li>
+                        <li><strong>Fijo:</strong> Número de 00-99 → x70</li>
+                        <li><strong>Corrido:</strong> Números que salieron → x70</li>
+                        <li><strong>Parlet:</strong> Combinación de números → x700</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 text-center">
+    <a href="{{ url_for('historial_resultados') }}" class="btn btn-info">
+        <i class="fas fa-history"></i> Ver Historial de Resultados
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Agregar Jugada{% endblock %}
+
+{% block header %}Agregar Jugada - {{ lista.nombre }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nombre_jugador" class="form-label">Nombre del Jugador</label>
+                        <input type="text" class="form-control" id="nombre_jugador" name="nombre_jugador" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="tipo" class="form-label">Tipo de Apuesta</label>
+                        <select class="form-control" id="tipo" name="tipo" required>
+                            <option value="fijo">Fijo (Premio x70)</option>
+                            <option value="corrido">Corrido (Premio x70)</option>
+                            <option value="parlet">Parlet (Premio x700)</option>
+                            <option value="centena">Centena (Premio x300)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="numeros" class="form-label">Números</label>
+                        <input type="text" class="form-control" id="numeros" name="numeros" required>
+                        <small class="text-muted">
+                            Fijo/Corrido/Centena: un número del 0-99<br>
+                            Parlet: números separados por coma (ej: 23,45,67)
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto Apostado ($)</label>
+                        <input type="number" class="form-control" id="monto" name="monto" step="0.01" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Guardar Jugada</button>
+                    <a href="{{ url_for('listero_dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tipoSelect = document.getElementById('tipo');
+    const numerosInput = document.getElementById('numeros');
+    
+    tipoSelect.addEventListener('change', function() {
+        if (this.value === 'parlet') {
+            numerosInput.placeholder = 'Ej: 23,45,67,89';
+        } else {
+            numerosInput.placeholder = 'Ej: 42';
+        }
+    });
+</script>
+{% endblock %}

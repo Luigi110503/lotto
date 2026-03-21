@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Resultados{% endblock %}
+
+{% block header %}Historial de Resultados{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Resultados Registrados</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Turno</th>
+                        <th>Resultado</th>
+                        <th>Centena</th>
+                        <th>Fijo</th>
+                        <th>Corrido 1</th>
+                        <th>Corrido 2</th>
+                        <th>Registrado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in resultados %}
+                    <tr>
+                        <td>{{ r.fecha.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            {% if r.turno == 'mediodia' %}
+                            🌞 Mediodía
+                            {% else %}
+                            🌙 Noche
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ r.resultado_formateado }}</strong></td>
+                        <td>{{ r.centena }}</td>
+                        <td>{{ r.fijo }}</td>
+                        <td>{{ r.corrido1 }}</td>
+                        <td>{{ r.corrido2 }}</td>
+                        <td>{{ r.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center">No hay resultados registrados aún.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="mt-3">
+    <a href="{{ url_for('administrar_resultados') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Registrar Nuevo Sorteo
+    </a>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+{% endblock %}

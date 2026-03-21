@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Premios del Sorteo{% endblock %}
+{% block header %}Premios - Turno {{ turno|title }}{% endblock %}
+{% block content %}
+<div class="card bg-dark text-white mb-4"><div class="card-body text-center"><h3>Números Ganadores</h3><h1><span class="badge bg-warning text-dark">{{ numeros_ganadores.centena }}</span> <span class="badge bg-warning text-dark">{{ numeros_ganadores.fijo }}</span> <span class="badge bg-warning text-dark">{{ numeros_ganadores.corridos[0] }}</span> <span class="badge bg-warning text-dark">{{ numeros_ganadores.corridos[1] }}</span></h1><p>Resultado: {{ resultado }}</p></div></div>
+<div class="card bg-success text-white mb-4"><div class="card-body text-center"><h2>💰 TOTAL PREMIOS: ${{ "%.2f"|format(calculo.total_premios) }}</h2></div></div>
+<div class="row">
+    {% for tipo in ['centena','fijo','corrido','parlet'] %}
+    {% if calculo.detalle[tipo] %}
+    <div class="col-md-6 mb-4"><div class="card"><div class="card-header bg-{% if tipo=='centena' %}primary{% elif tipo=='fijo' %}info{% elif tipo=='corrido' %}warning{% else %}danger{% endif %} text-white"><h5>{{ tipo|title }} (x{{ {'centena':300,'fijo':70,'corrido':70,'parlet':700}[tipo] }})</h5></div><div class="card-body">
+    <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Lista</th><th>Listero</th><th>Números</th><th>Monto</th><th>Premio</th></tr></thead>
+    <tbody>{% for p in calculo.detalle[tipo] %}<tr><td>{{ p.lista }}</td><td>{{ p.listero }}</td><td>{{ p.numeros }}</td><td>${{ "%.2f"|format(p.monto) }}</td><td class="fw-bold text-success">${{ "%.2f"|format(p.premio) }}</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+    {% endif %}
+    {% endfor %}
+</div>
+<div class="mt-3"><a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Volver</a> <a href="{{ url_for('administrar_resultados') }}" class="btn btn-primary">Nuevo Sorteo</a></div>
+{% endblock %}
