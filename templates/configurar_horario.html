@@ -1,36 +1,25 @@
 {% extends "base.html" %}
 
-{% block title %}Configurar Premios{% endblock %}
+{% block title %}Configurar Horario{% endblock %}
 
-{% block header %}Configuración de Premios{% endblock %}
+{% block header %}Configurar Horario de Cierre - {{ lista.nombre }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Multiplicadores de Premios</h5>
+                <h5 class="mb-0">Horario de Cierre</h5>
             </div>
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
-                        <label for="fijo" class="form-label">Fijo (x)</label>
-                        <input type="number" class="form-control" id="fijo" name="fijo" value="{{ configs.get('fijo', 70) }}" required>
-                        <small class="text-muted">Premio = monto × multiplicador</small>
+                        <label for="hora_cierre" class="form-label">Hora de Cierre (formato HH:MM)</label>
+                        <input type="time" class="form-control" id="hora_cierre" name="hora_cierre" 
+                               value="{{ lista.hora_cierre }}" required>
+                        <small class="text-muted">Ej: 12:00 para mediodía, 20:00 para noche</small>
                     </div>
-                    <div class="mb-3">
-                        <label for="corrido" class="form-label">Corrido (x)</label>
-                        <input type="number" class="form-control" id="corrido" name="corrido" value="{{ configs.get('corrido', 70) }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="centena" class="form-label">Centena (x)</label>
-                        <input type="number" class="form-control" id="centena" name="centena" value="{{ configs.get('centena', 300) }}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="parlet" class="form-label">Parlet (x)</label>
-                        <input type="number" class="form-control" id="parlet" name="parlet" value="{{ configs.get('parlet', 700) }}" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
                     <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancelar</a>
                 </form>
             </div>

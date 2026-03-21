@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Cambiar mis credenciales{% endblock %}
+
+{% block header %}Cambiar mis credenciales{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Modificar usuario y/o contraseña</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="nuevo_username" class="form-label">Nuevo nombre de usuario (opcional)</label>
+                        <input type="text" class="form-control" id="nuevo_username" name="nuevo_username" placeholder="Dejar en blanco para no cambiar">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password_actual" class="form-label">Contraseña actual</label>
+                        <input type="password" class="form-control" id="password_actual" name="password_actual" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nueva_password" class="form-label">Nueva contraseña (opcional)</label>
+                        <input type="password" class="form-control" id="nueva_password" name="nueva_password">
+                        <small class="text-muted">Mínimo 6 caracteres</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmar_password" class="form-label">Confirmar nueva contraseña</label>
+                        <input type="password" class="form-control" id="confirmar_password" name="confirmar_password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Actualizar credenciales</button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

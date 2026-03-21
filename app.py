@@ -1,7 +1,7 @@
 import os
 import pytz
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from flask_login import LoginManager, login_required, current_user
+from flask_login import LoginManager, login_required, current_user, logout_user
 from models import db, User, Lista, Jugada, LimiteNumero, ResultadoSorteo, HistorialRecaudacion, PremioConfig
 from auth import auth_bp, admin_required, listero_required, listero_autorizado_required
 from utils import ApuestaCalculator
@@ -284,6 +284,53 @@ def clear_database():
         return redirect(url_for('admin_dashboard'))
     return render_template('confirmar_clear.html')
 
+# ========== ADMIN CAMBIAR SUS PROPIAS CREDENCIALES ==========
+@app.route('/admin/cambiar_credenciales', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_cambiar_credenciales():
+    if request.method == 'POST':
+        nuevo_username = request.form.get('nuevo_username', '').strip()
+        password_actual = request.form.get('password_actual')
+        nueva_password = request.form.get('nueva_password')
+        confirmar = request.form.get('confirmar_password')
+
+        # Verificar contraseña actual
+        if not current_user.check_password(password_actual):
+            flash('Contraseña actual incorrecta.', 'danger')
+            return redirect(url_for('admin_cambiar_credenciales'))
+
+        # Cambiar nombre de usuario si se proporciona
+        if nuevo_username and nuevo_username != current_user.username:
+            if User.query.filter_by(username=nuevo_username).first():
+                flash('El nombre de usuario ya existe.', 'danger')
+                return redirect(url_for('admin_cambiar_credenciales'))
+            current_user.username = nuevo_username
+            flash('Nombre de usuario actualizado. Debes volver a iniciar sesión.', 'info')
+
+        # Cambiar contraseña si se proporciona
+        if nueva_password:
+            if len(nueva_password) < 6:
+                flash('La nueva contraseña debe tener al menos 6 caracteres.', 'danger')
+                return redirect(url_for('admin_cambiar_credenciales'))
+            if nueva_password != confirmar:
+                flash('Las contraseñas no coinciden.', 'danger')
+                return redirect(url_for('admin_cambiar_credenciales'))
+            current_user.set_password(nueva_password)
+            flash('Contraseña actualizada.', 'success')
+
+        db.session.commit()
+
+        # Si se cambió el nombre de usuario, cerrar sesión para obligar a reingresar
+        if nuevo_username and nuevo_username != current_user.username:
+            logout_user()
+            flash('Credenciales actualizadas. Por favor inicia sesión nuevamente.', 'info')
+            return redirect(url_for('auth.login'))
+
+        return redirect(url_for('admin_dashboard'))
+
+    return render_template('admin_cambiar_credenciales.html')
+
 # ========== CONFIGURACIÓN DE PREMIOS ==========
 @app.route('/admin/premios', methods=['GET', 'POST'])
 @login_required
@@ -524,20 +571,20 @@ def listero_cambiar_password():
         return redirect(url_for('listero_dashboard'))
     return render_template('cambiar_password_listero.html')
 
-# ========== API ==========
+# ========== API DE SINCRONIZACIÓN OFFLINE ==========
 @app.route('/api/sincronizar', methods=['POST'])
 @login_required
 def sincronizar():
     try:
         data = request.get_json()
         jugadas_offline = data.get('jugadas', [])
-        for j in jugadas_offline:
+        for jugada_data in jugadas_offline:
             jugada = Jugada(
-                lista_id=j['lista_id'],
-                nombre_jugador=j['nombre_jugador'],
-                tipo_apuesta=j['tipo'],
-                numeros=j['numeros'],
-                monto_apostado=j['monto'],
+                lista_id=jugada_data['lista_id'],
+                nombre_jugador=jugada_data['nombre_jugador'],
+                tipo_apuesta=jugada_data['tipo'],
+                numeros=json.dumps(jugada_data['numeros']),
+                monto_apostado=jugada_data['monto'],
                 monto_premio=0,
                 sincronizada=True
             )
