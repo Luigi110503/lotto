@@ -11,13 +11,12 @@ from collections import defaultdict
 
 app = Flask(__name__)
 
-# Configuración de clave secreta (cámbiala en producción)
+# ========== CONFIGURACIÓN ==========
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave-muy-segura-cambiala-en-produccion')
 
-# Base de datos: usa PostgreSQL si está definida la variable de entorno, sino SQLite local
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-    # Render usa postgresql://...; SQLAlchemy necesita postgresql://
+    # Ajusta el esquema de la URL para SQLAlchemy si viene de Neon
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -30,13 +29,14 @@ app.config['WTF_CSRF_ENABLED'] = False
 # Zona horaria de Cuba
 CUBA_TZ = pytz.timezone('America/Havana')
 
+# ========== EXTENSIONES ==========
 db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 app.register_blueprint(auth_bp, url_prefix='/auth')
 
-# =============== UTILIDADES ===============
+# ========== UTILIDADES DE PLANTILLAS ==========
 @app.context_processor
 def utility_processor():
     now_utc = datetime.now(timezone.utc)
@@ -51,8 +51,8 @@ def cuba_time_filter(dt):
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(CUBA_TZ).strftime('%d/%m/%Y %H:%M')
 
+# ========== FUNCIONES AUXILIARES ==========
 def get_premio_multiplier(tipo):
-    """Obtiene el multiplicador actual para un tipo de apuesta"""
     config = PremioConfig.query.filter_by(tipo=tipo).first()
     if config:
         return config.multiplicador
@@ -60,7 +60,6 @@ def get_premio_multiplier(tipo):
     return defaults.get(tipo, 0)
 
 def cerrar_lista_individual(lista):
-    """Cierra una lista y guarda historial."""
     if not lista.activa:
         return
     jugadas = Jugada.query.filter_by(lista_id=lista.id).all()
@@ -78,14 +77,12 @@ def cerrar_lista_individual(lista):
     db.session.add(historial)
     lista.activa = False
     lista.fecha_cierre = datetime.now(timezone.utc)
-    # Resetear límites por número
     limites = LimiteNumero.query.filter_by(lista_id=lista.id).all()
     for lim in limites:
         lim.monto_actual = 0
     db.session.commit()
 
 def cerrar_listas_vencidas():
-    """Cierra todas las listas activas cuya hora de cierre ya pasó."""
     now_cuba = datetime.now(CUBA_TZ)
     listas_vencidas = Lista.query.filter(
         Lista.activa == True,
@@ -100,7 +97,7 @@ def cerrar_listas_vencidas():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# =============== RUTAS DEL ADMIN ===============
+# ========== RUTAS DEL ADMIN ==========
 @app.route('/')
 def index():
     return redirect(url_for('auth.login'))
@@ -274,7 +271,7 @@ def cerrar_vencidas():
     flash(f'Se cerraron {cantidad} listas vencidas.', 'success')
     return redirect(url_for('admin_dashboard'))
 
-# =============== CONFIGURACIÓN DE PREMIOS ===============
+# ========== CONFIGURACIÓN DE PREMIOS ==========
 @app.route('/admin/premios', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -296,7 +293,7 @@ def configurar_premios():
     configs = {c.tipo: c.multiplicador for c in PremioConfig.query.all()}
     return render_template('configurar_premios.html', configs=configs)
 
-# =============== RESULTADOS ===============
+# ========== RESULTADOS ==========
 @app.route('/admin/resultados', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -323,7 +320,6 @@ def administrar_resultados():
         db.session.add(nuevo)
         db.session.commit()
 
-        # Cerrar listas activas del turno
         listas_abiertas = Lista.query.filter_by(turno=turno, activa=True).all()
         for lista in listas_abiertas:
             cerrar_lista_individual(lista)
@@ -404,7 +400,7 @@ def calcular_premios_generales(resultado, turno):
     return render_template('resultado_premios.html', resultado=resultado_formateado, turno=turno,
                            numeros_ganadores=numeros, calculo=calculo)
 
-# =============== LISTERO ===============
+# ========== RUTAS DEL LISTERO ==========
 @app.route('/listero/dashboard')
 @login_required
 @listero_required
@@ -515,7 +511,7 @@ def listero_cambiar_password():
         return redirect(url_for('listero_dashboard'))
     return render_template('cambiar_password_listero.html')
 
-# =============== API ===============
+# ========== API ==========
 @app.route('/api/sincronizar', methods=['POST'])
 @login_required
 def sincronizar():
@@ -538,7 +534,7 @@ def sincronizar():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-# =============== INICIALIZACIÓN ===============
+# ========== INICIALIZACIÓN ==========
 def crear_usuarios_iniciales():
     with app.app_context():
         db.create_all()
@@ -556,7 +552,6 @@ def crear_usuarios_iniciales():
                 db.session.add(nuevo)
         db.session.commit()
 
-        # Configuraciones de premio por defecto
         defaults = {'fijo': 70, 'corrido': 70, 'centena': 300, 'parlet': 700}
         for tipo, mult in defaults.items():
             if not PremioConfig.query.filter_by(tipo=tipo).first():
@@ -565,6 +560,5 @@ def crear_usuarios_iniciales():
         db.session.commit()
 
 if __name__ == '__main__':
-    # En desarrollo local usamos app.run()
-    # En producción (Render) se ejecutará con gunicorn, por lo que esta parte no se ejecutará.
-    app.run(debug=False)   # Cambia a True si quieres modo debug localmente
+    # Para desarrollo local (no usado en producción con gunicorn)
+    app.run(debug=False)
