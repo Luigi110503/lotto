@@ -1,19 +1,30 @@
 import os
 import pytz
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
-from flask_login import LoginManager, login_required, current_user, logout_user
-from models import db, User, Lista, Jugada, LimiteNumero, ResultadoSorteo, HistorialRecaudacion, PremioConfig
-from auth import auth_bp, admin_required, listero_required, listero_autorizado_required
-from utils import ApuestaCalculator
 import json
 from datetime import datetime, timezone
 from collections import defaultdict
+from functools import wraps
+
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
+from flask_login import LoginManager, login_required, current_user, logout_user
+from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+from dotenv import load_dotenv
+
+from models import db, User, Lista, Jugada, LimiteNumero, ResultadoSorteo, HistorialRecaudacion, PremioConfig
+from auth import auth_bp, admin_required, listero_required, listero_autorizado_required
+from utils import ApuestaCalculator
+
+# Cargar variables de entorno desde .env
+load_dotenv()
 
 app = Flask(__name__)
 
 # ========== CONFIGURACIÓN ==========
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave-muy-segura-cambiala-en-produccion')
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secreto-cambiala')
 
+# Base de datos
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
     if database_url.startswith('postgres://'):
@@ -34,6 +45,12 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'auth.login'
 app.register_blueprint(auth_bp, url_prefix='/auth')
+
+# CORS para permitir conexiones desde app móvil
+CORS(app)
+
+# JWT para autenticación de API móvil
+jwt = JWTManager(app)
 
 # ========== UTILIDADES DE PLANTILLAS ==========
 @app.context_processor
@@ -96,7 +113,7 @@ def cerrar_listas_vencidas():
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# ========== RUTAS DEL ADMIN ==========
+# ========== RUTAS DEL ADMIN (TU CÓDIGO ORIGINAL) ==========
 @app.route('/')
 def index():
     return redirect(url_for('auth.login'))
@@ -105,6 +122,7 @@ def index():
 @login_required
 @admin_required
 def admin_dashboard():
+    cerrar_listas_vencidas()
     listas = Lista.query.filter_by(activa=True).all()
     listeros = User.query.filter_by(role='listero').all()
     total_apostado = sum(sum(j.monto_apostado for j in lista.jugadas) for lista in listas)
@@ -270,7 +288,6 @@ def cerrar_vencidas():
     flash(f'Se cerraron {cantidad} listas vencidas.', 'success')
     return redirect(url_for('admin_dashboard'))
 
-# ========== VACIAR BASE DE DATOS ==========
 @app.route('/admin/clear_database', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -284,7 +301,6 @@ def clear_database():
         return redirect(url_for('admin_dashboard'))
     return render_template('confirmar_clear.html')
 
-# ========== ADMIN CAMBIAR SUS PROPIAS CREDENCIALES ==========
 @app.route('/admin/cambiar_credenciales', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -295,12 +311,10 @@ def admin_cambiar_credenciales():
         nueva_password = request.form.get('nueva_password')
         confirmar = request.form.get('confirmar_password')
 
-        # Verificar contraseña actual
         if not current_user.check_password(password_actual):
             flash('Contraseña actual incorrecta.', 'danger')
             return redirect(url_for('admin_cambiar_credenciales'))
 
-        # Cambiar nombre de usuario si se proporciona
         if nuevo_username and nuevo_username != current_user.username:
             if User.query.filter_by(username=nuevo_username).first():
                 flash('El nombre de usuario ya existe.', 'danger')
@@ -308,7 +322,6 @@ def admin_cambiar_credenciales():
             current_user.username = nuevo_username
             flash('Nombre de usuario actualizado. Debes volver a iniciar sesión.', 'info')
 
-        # Cambiar contraseña si se proporciona
         if nueva_password:
             if len(nueva_password) < 6:
                 flash('La nueva contraseña debe tener al menos 6 caracteres.', 'danger')
@@ -321,7 +334,6 @@ def admin_cambiar_credenciales():
 
         db.session.commit()
 
-        # Si se cambió el nombre de usuario, cerrar sesión para obligar a reingresar
         if nuevo_username and nuevo_username != current_user.username:
             logout_user()
             flash('Credenciales actualizadas. Por favor inicia sesión nuevamente.', 'info')
@@ -331,7 +343,6 @@ def admin_cambiar_credenciales():
 
     return render_template('admin_cambiar_credenciales.html')
 
-# ========== CONFIGURACIÓN DE PREMIOS ==========
 @app.route('/admin/premios', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -353,7 +364,6 @@ def configurar_premios():
     configs = {c.tipo: c.multiplicador for c in PremioConfig.query.all()}
     return render_template('configurar_premios.html', configs=configs)
 
-# ========== RESULTADOS ==========
 @app.route('/admin/resultados', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -594,7 +604,225 @@ def sincronizar():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# =============================================================================
+# ========== 📱 NUEVOS ENDPOINTS PARA APP MÓVIL (API REST + JWT) ==========
+# =============================================================================
+
+@app.route('/api/mobile/login', methods=['POST'])
+def mobile_login():
+    """
+    Login para app móvil: devuelve token JWT.
+    JSON esperado: {"username": "...", "password": "..."}
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON requerido'}), 400
+
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({'error': 'Username y password son requeridos'}), 400
+
+    user = User.query.filter_by(username=username).first()
+
+    if user and user.check_password(password) and user.activo:
+        additional_claims = {
+            "role": user.role,
+            "listero_id": user.id if user.role == 'listero' else None,
+            "nombre": user.nombre_completo,
+            "autorizado": user.autorizado if user.role == 'listero' else None
+        }
+        access_token = create_access_token(identity=user.id, additional_claims=additional_claims)
+        return jsonify({
+            'access_token': access_token,
+            'token_type': 'Bearer',
+            'role': user.role,
+            'nombre': user.nombre_completo,
+            'autorizado': user.autorizado if user.role == 'listero' else None
+        }), 200
+
+    return jsonify({'error': 'Credenciales inválidas o usuario inactivo'}), 401
+
+
+@app.route('/api/mobile/listas', methods=['GET'])
+@jwt_required()
+def mobile_get_listas():
+    """
+    Obtiene listas activas según el rol del usuario.
+    Headers: Authorization: Bearer <token>
+    """
+    current_user_id = get_jwt_identity()
+    claims = get_jwt()
+    role = claims.get('role')
+
+    if role == 'admin':
+        listas = Lista.query.filter_by(activa=True).all()
+    elif role == 'listero':
+        listero_id = claims.get('listero_id')
+        if not listero_id:
+            return jsonify({'error': 'No se pudo identificar al listero'}), 400
+        listas = Lista.query.filter_by(listero_id=listero_id, activa=True).all()
+    else:
+        return jsonify({'error': 'Rol no autorizado'}), 403
+
+    resultado = []
+    for lista in listas:
+        total_apostado = sum(j.monto_apostado for j in lista.jugadas)
+        resultado.append({
+            'id': lista.id,
+            'nombre': lista.nombre,
+            'turno': lista.turno,
+            'hora_cierre': lista.hora_cierre,
+            'limite_total': lista.limite_total,
+            'total_apostado': total_apostado,
+            'activa': lista.activa
+        })
+
+    return jsonify(resultado), 200
+
+
+@app.route('/api/mobile/jugada', methods=['POST'])
+@jwt_required()
+def mobile_agregar_jugada():
+    """
+    Agrega una jugada desde la app móvil.
+    JSON esperado: {
+        "lista_id": 1,
+        "nombre_jugador": "Juan",
+        "tipo": "fijo",
+        "numeros": "12",
+        "monto": 10.00
+    }
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON requerido'}), 400
+
+    claims = get_jwt()
+
+    # Solo listeros pueden agregar jugadas
+    if claims.get('role') != 'listero':
+        return jsonify({'error': 'Solo listeros pueden agregar jugadas'}), 403
+
+    lista_id = data.get('lista_id')
+    lista = Lista.query.get(lista_id)
+
+    if not lista:
+        return jsonify({'error': 'Lista no encontrada'}), 404
+
+    if lista.listero_id != claims.get('listero_id'):
+        return jsonify({'error': 'No tienes permiso para esta lista'}), 403
+
+    if not lista.activa:
+        return jsonify({'error': 'Esta lista está cerrada'}), 400
+
+    # Validar hora de cierre
+    if lista.hora_cierre:
+        hora_actual = datetime.now(CUBA_TZ).strftime('%H:%M')
+        if hora_actual > lista.hora_cierre:
+            return jsonify({'error': f'Lista cerró a las {lista.hora_cierre}'}), 400
+
+    tipo = data.get('tipo')
+    numeros_str = data.get('numeros')
+    monto = data.get('monto')
+    nombre_jugador = data.get('nombre_jugador')
+
+    if not all([tipo, numeros_str, monto, nombre_jugador]):
+        return jsonify({'error': 'Todos los campos son requeridos'}), 400
+
+    try:
+        monto = float(monto)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Monto debe ser un número válido'}), 400
+
+    # Validar números con tu lógica existente
+    valido, numeros_lista = ApuestaCalculator.validar_numeros(tipo, numeros_str)
+    if not valido:
+        return jsonify({'error': 'Números inválidos para este tipo de apuesta'}), 400
+
+    # Verificar límites
+    limite_ok, mensaje = ApuestaCalculator.verificar_limites(lista, numeros_lista, monto)
+    if not limite_ok:
+        return jsonify({'error': mensaje}), 400
+
+    # Crear jugada
+    jugada = Jugada(
+        lista_id=lista_id,
+        nombre_jugador=nombre_jugador,
+        tipo_apuesta=tipo,
+        numeros=json.dumps(numeros_lista),
+        monto_apostado=monto,
+        monto_premio=0
+        # No especificamos fecha_apuesta, se asignará automáticamente con default=datetime.utcnow
+    )
+    db.session.add(jugada)
+
+    # Actualizar límites por número
+    for num in numeros_lista:
+        limite = LimiteNumero.query.filter_by(lista_id=lista_id, numero=num).first()
+        if limite:
+            limite.monto_actual += monto
+
+    db.session.commit()
+
+    return jsonify({
+        'status': 'success',
+        'jugada_id': jugada.id,
+        'mensaje': 'Jugada registrada correctamente'
+    }), 201
+
+
+@app.route('/api/mobile/jugadas/<int:lista_id>', methods=['GET'])
+@jwt_required()
+def mobile_get_jugadas(lista_id):
+    """
+    Obtiene todas las jugadas de una lista.
+    Headers: Authorization: Bearer <token>
+    """
+    claims = get_jwt()
+    lista = Lista.query.get_or_404(lista_id)
+
+    # Validar permisos
+    if claims.get('role') == 'admin':
+        pass  # Admin ve todo
+    elif claims.get('role') == 'listero' and lista.listero_id == claims.get('listero_id'):
+        pass  # Listero ve sus listas
+    else:
+        return jsonify({'error': 'No autorizado'}), 403
+
+    jugadas = Jugada.query.filter_by(lista_id=lista_id).all()
+    resultado = []
+
+    for j in jugadas:
+        try:
+            numeros = json.loads(j.numeros) if j.numeros else []
+        except:
+            numeros = []
+
+        resultado.append({
+            'id': j.id,
+            'jugador': j.nombre_jugador,
+            'tipo': j.tipo_apuesta,
+            'numeros': numeros,
+            'monto': j.monto_apostado,
+            'premio': j.monto_premio,
+            'fecha': j.fecha_apuesta.isoformat() if hasattr(j, 'fecha_apuesta') and j.fecha_apuesta else None
+        })
+
+    return jsonify(resultado), 200
+
+
+@app.route('/api/mobile/health', methods=['GET'])
+def health_check():
+    """Endpoint simple para verificar que la API está funcionando."""
+    return jsonify({'status': 'ok', 'message': 'API móvil activa'}), 200
+
+
+# =============================================================================
 # ========== INICIALIZACIÓN DE LA BASE DE DATOS ==========
+# =============================================================================
+
 def crear_usuarios_iniciales():
     """Crea usuario administrador y listeros de prueba si no existen."""
     admin = User.query.filter_by(username='admin').first()
@@ -602,6 +830,7 @@ def crear_usuarios_iniciales():
         admin = User(username='admin', nombre_completo='Administrador', role='admin', activo=True, autorizado=True)
         admin.set_password('admin123')
         db.session.add(admin)
+
     for u in [('listero1', 'Juan Pérez', True), ('listero2', 'María García', True), ('listero3', 'Carlos López', False)]:
         if not User.query.filter_by(username=u[0]).first():
             nuevo = User(username=u[0], nombre_completo=u[1], role='listero', activo=True, autorizado=u[2])
@@ -609,6 +838,7 @@ def crear_usuarios_iniciales():
                 nuevo.fecha_autorizacion = datetime.now(timezone.utc)
             nuevo.set_password('listero123')
             db.session.add(nuevo)
+
     db.session.commit()
 
     defaults = {'fijo': 70, 'corrido': 70, 'centena': 300, 'parlet': 700}
@@ -618,10 +848,13 @@ def crear_usuarios_iniciales():
             db.session.add(config)
     db.session.commit()
 
-# Esta parte se ejecuta siempre que la aplicación se inicia (gunicorn o flask run)
+
+# Crear tablas y usuarios iniciales al iniciar la app
 with app.app_context():
     db.create_all()
     crear_usuarios_iniciales()
 
+
 if __name__ == '__main__':
-    app.run(debug=False)
+    # En desarrollo local
+    app.run(debug=True, host='0.0.0.0', port=5000)
